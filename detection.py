@@ -20,6 +20,12 @@ except Exception:
 
 os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "1")
 
+from dotenv import load_dotenv
+
+# Load before importing main_window, since MODEL_FILE/CAMERA_DEVICE are
+# read from the environment at that module's import time.
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 

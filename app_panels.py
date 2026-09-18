@@ -36,11 +36,12 @@ class CameraSettingsPanel(QWidget):
     cameraIndexChanged = Signal(int)
     resolutionChanged = Signal(int, int)
 
-    def __init__(self, initial_values, parent=None):
+    def __init__(self, initial_values, parent=None, camera_device=0):
         super().__init__(parent)
         self._values = dict(initial_values)
         self._toggles = {}
         self._sliders = {}
+        self._camera_device = camera_device
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -88,6 +89,9 @@ class CameraSettingsPanel(QWidget):
         cam_combo = QComboBox()
         for label, _index in CAMERA_OPTIONS:
             cam_combo.addItem(label)
+        device_indices = [index for _label, index in CAMERA_OPTIONS]
+        if self._camera_device in device_indices:
+            cam_combo.setCurrentIndex(device_indices.index(self._camera_device))
         cam_combo.currentIndexChanged.connect(lambda i: self.cameraIndexChanged.emit(CAMERA_OPTIONS[i][1]))
         cam_row.addWidget(cam_combo, stretch=1)
         layout.addLayout(cam_row)

@@ -67,18 +67,30 @@ pip install -r requirements.txt
 > (pick the CUDA version matching your driver from
 > [pytorch.org/get-started/locally](https://pytorch.org/get-started/locally/)).
 
-## 4. Add your model weights
+## 4. Configure the app (`.env`)
 
-This repo does not include a trained model. Place your YOLO weights
-file in the project root and make sure the filename matches what
-`main_window.py` expects:
+Copy the example env file and edit it:
 
-```python
-MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "best_bal_1.pt")
+```bash
+cp .env.example .env
 ```
 
-Either rename your weights file to `best_bal_1.pt`, or open
-`main_window.py` and change `"best_bal_1.pt"` to your file's name.
+```dotenv
+# .env
+MODEL_FILE=best_bal_1.pt
+CAMERA_DEVICE=0
+```
+
+- `MODEL_FILE` — filename of your YOLO weights (`.pt`). This repo does
+  **not** include a trained model, so place your own weights file in
+  the project root and set `MODEL_FILE` to match its name.
+- `CAMERA_DEVICE` — the OpenCV camera index to open on startup (`0` is
+  usually the default/built-in webcam; try `1`, `2`, etc. if you have
+  more than one camera attached). This can also be changed later from
+  the Camera Settings panel while the app is running.
+
+`.env` is gitignored (it's machine-specific config), which is why
+`.env.example` exists as the template to copy.
 
 ## 5. Run the app
 

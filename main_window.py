@@ -28,7 +28,9 @@ from settings import (
     save_camera_settings,
 )
 
-MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "best_bal_1.pt")
+MODEL_FILE = os.getenv("MODEL_FILE", "best_bal_1.pt")
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), MODEL_FILE)
+CAMERA_DEVICE = int(os.getenv("CAMERA_DEVICE", "0"))
 
 
 class MainWindow(QMainWindow):
@@ -70,7 +72,7 @@ class MainWindow(QMainWindow):
         root.addWidget(splitter, stretch=1)
 
         saved = load_camera_settings()
-        self.camera_settings_panel = CameraSettingsPanel(init_camera_values(saved))
+        self.camera_settings_panel = CameraSettingsPanel(init_camera_values(saved), camera_device=CAMERA_DEVICE)
         self.image_adjustments_panel = ImageAdjustmentsPanel(init_image_values(saved))
         self.model_settings_panel = ModelSettingsPanel(available_devices(), os.path.basename(MODEL_PATH))
 
@@ -214,7 +216,7 @@ class MainWindow(QMainWindow):
     # ---- worker wiring -------------------------------------------------
     def _start_worker(self):
         self.worker_thread = QThread(self)
-        self.worker = CameraWorker(MODEL_PATH)
+        self.worker = CameraWorker(MODEL_PATH, camera_index=CAMERA_DEVICE)
         self.worker.moveToThread(self.worker_thread)
 
         self.worker_thread.started.connect(self.worker.start)
