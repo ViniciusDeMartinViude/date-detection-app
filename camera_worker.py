@@ -11,6 +11,7 @@ from PySide6.QtGui import QImage
 from ultralytics import YOLO
 
 from app_style import color_for_class
+from model_info import collect_model_info
 from settings import CAMERA_CONTROLS
 
 CAMERA_WIDTH = 1280
@@ -104,6 +105,7 @@ class CameraWorker(QObject):
     frameReady = Signal(object)
     cameraStateChanged = Signal(bool)
     modelStateChanged = Signal(str)
+    modelInfoReady = Signal(str, object)
     errorOccurred = Signal(str)
 
     def __init__(self, model_path, camera_index=0):
@@ -133,6 +135,7 @@ class CameraWorker(QObject):
         try:
             self.model = YOLO(self._model_path)
             self.modelStateChanged.emit(os.path.basename(self._model_path))
+            self._emit_model_info(self._model_path)
         except Exception as exc:
             self.errorOccurred.emit(f"Failed to load model: {exc}")
 
@@ -220,8 +223,16 @@ class CameraWorker(QObject):
             self.model = YOLO(path)
             self._model_path = path
             self.modelStateChanged.emit(os.path.basename(path))
+            self._emit_model_info(path)
         except Exception as exc:
             self.errorOccurred.emit(f"Failed to load model: {exc}")
+
+    def _emit_model_info(self, path):
+        # Metadata is informational; a failure here must not count as a failed model load.
+        try:
+            self.modelInfoReady.emit(os.path.basename(path), collect_model_info(self.model, path))
+        except Exception as exc:
+            self.errorOccurred.emit(f"Could not read model metadata: {exc}")
 
     def _apply_image_adjustments(self, frame):
         if self._brightness == 0 and self._contrast == 100:

@@ -15,7 +15,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app_panels import CameraSettingsPanel, DetectionResultsPanel, ImageAdjustmentsPanel, ModelSettingsPanel
+from app_panels import (
+    CameraSettingsPanel,
+    DetectionResultsPanel,
+    ImageAdjustmentsPanel,
+    ModelInfoDialog,
+    ModelSettingsPanel,
+)
 from app_style import COLOR_ERROR, COLOR_SUCCESS, COLOR_WARNING
 from app_widgets import DualCameraView, StatusDot
 from camera_worker import CameraWorker, available_devices
@@ -53,6 +59,8 @@ class MainWindow(QMainWindow):
 
         self.total_counts = Counter()
         self.frame_count = 0
+        self.model_info = None  # (filename, sections) for the currently loaded model
+        self._show_info_when_ready = False
 
         self._build_ui()
         self._start_worker()
@@ -138,7 +146,8 @@ class MainWindow(QMainWindow):
         self.model_settings_panel.iouChanged.connect(self.iouChanged)
         self.model_settings_panel.deviceChanged.connect(self.deviceChanged)
         self.model_settings_panel.inferenceToggled.connect(self._on_inference_toggled)
-        self.model_settings_panel.loadModelRequested.connect(self.modelLoadRequested)
+        self.model_settings_panel.loadModelRequested.connect(self._on_load_model_requested)
+        self.model_settings_panel.showModelInfoRequested.connect(self._show_model_info)
 
         self.detection_panel.showCoordinatesToggled.connect(self.showCoordinatesChanged)
 
@@ -223,6 +232,7 @@ class MainWindow(QMainWindow):
         self.worker.frameReady.connect(self._on_frame_ready)
         self.worker.cameraStateChanged.connect(self._on_camera_state_changed)
         self.worker.modelStateChanged.connect(self._on_model_state_changed)
+        self.worker.modelInfoReady.connect(self._on_model_info_ready)
         self.worker.errorOccurred.connect(self._on_error)
 
         self.controlChanged.connect(self.worker.set_camera_control)
@@ -305,5 +315,23 @@ class MainWindow(QMainWindow):
     def _on_model_state_changed(self, filename):
         self.model_status_label.setText(f"Model: {filename}")
 
+    def _on_load_model_requested(self, path):
+        self._show_info_when_ready = True
+        self.modelLoadRequested.emit(path)
+
+    def _on_model_info_ready(self, filename, sections):
+        self.model_info = (filename, sections)
+        self.model_settings_panel.set_model_info_available(True)
+        if self._show_info_when_ready:
+            self._show_info_when_ready = False
+            self._show_model_info()
+
+    def _show_model_info(self):
+        if self.model_info is None:
+            return
+        filename, sections = self.model_info
+        ModelInfoDialog(filename, sections, self).exec()
+
     def _on_error(self, message):
+        self._show_info_when_ready = False
         self.camera_status_label.setText(message)

@@ -2,8 +2,10 @@ import os
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
+    QDialog,
     QFileDialog,
     QFrame,
     QGroupBox,
@@ -11,6 +13,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -206,6 +210,7 @@ class ModelSettingsPanel(QWidget):
     deviceChanged = Signal(object)
     inferenceToggled = Signal(bool)
     loadModelRequested = Signal(str)
+    showModelInfoRequested = Signal()
 
     def __init__(self, device_options, model_filename, parent=None):
         super().__init__(parent)
@@ -225,6 +230,11 @@ class ModelSettingsPanel(QWidget):
         model_row.addWidget(self.model_path_edit, stretch=1)
         model_row.addWidget(load_btn)
         group_layout.addLayout(model_row)
+
+        self.info_btn = QPushButton("Model Info")
+        self.info_btn.setEnabled(False)
+        self.info_btn.clicked.connect(self.showModelInfoRequested)
+        group_layout.addWidget(self.info_btn)
 
         self.confidence_slider = LabeledSlider("Confidence Threshold", 0.05, 0.95, 0.60, step=0.05, scale=100)
         self.confidence_slider.valueChanged.connect(lambda v: self.confidenceChanged.emit(float(v)))
@@ -263,6 +273,57 @@ class ModelSettingsPanel(QWidget):
 
     def set_inference_enabled(self, enabled):
         self.inference_toggle.setChecked(enabled)
+
+    def set_model_info_available(self, available):
+        self.info_btn.setEnabled(available)
+
+
+class ModelInfoDialog(QDialog):
+    """Read-only tree of every metadata section collected from a model file."""
+
+    def __init__(self, model_name, sections, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"Model Info - {model_name}")
+        self.resize(720, 640)
+        self._sections = sections
+
+        layout = QVBoxLayout(self)
+        tree = QTreeWidget()
+        tree.setColumnCount(2)
+        tree.setHeaderLabels(["Property", "Value"])
+        tree.setAlternatingRowColors(True)
+        for title, rows in sections:
+            top = QTreeWidgetItem([title])
+            font = top.font(0)
+            font.setBold(True)
+            top.setFont(0, font)
+            for key, value in rows:
+                child = QTreeWidgetItem([key, value])
+                child.setToolTip(1, value)
+                top.addChild(child)
+            tree.addTopLevelItem(top)
+            top.setExpanded(True)
+        tree.resizeColumnToContents(0)
+        tree.setColumnWidth(0, min(tree.columnWidth(0) + 20, 260))
+        layout.addWidget(tree, stretch=1)
+
+        buttons = QHBoxLayout()
+        copy_btn = QPushButton("Copy to Clipboard")
+        copy_btn.clicked.connect(self._copy)
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        buttons.addWidget(copy_btn)
+        buttons.addStretch(1)
+        buttons.addWidget(close_btn)
+        layout.addLayout(buttons)
+
+    def _copy(self):
+        lines = []
+        for title, rows in self._sections:
+            lines.append(f"[{title}]")
+            lines += [f"{k}: {v}" for k, v in rows]
+            lines.append("")
+        QApplication.clipboard().setText("\n".join(lines))
 
 
 class DetectionResultsPanel(QWidget):
